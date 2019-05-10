@@ -7,17 +7,20 @@
 #' @param app The client/app ID to use to authenticate with.
 #' @param password The password, either for the app, or your username if supplied. See 'Details' below.
 #' @param username Your AAD username, if using the resource owner grant. See 'Details' below.
-#' @param certificate A certificate to authenticate with.
+#' @param certificate A file containing the certificate for authenticating with, an Azure Key Vault certificate object, or a call to the `cert_assertion` function to build a client assertion with a certificate. See 'Certificate authentication' below.
 #' @param auth_type The authentication type. See 'Details' below.
-#' @param aad_host URL for your AAD host. For the public Azure cloud, this is `https://login.microsoftonline.com/`. Change this if you are using a government or private cloud.
+#' @param aad_host URL for your AAD host. For the public Azure cloud, this is `https://login.microsoftonline.com/`. Change this if you are using a government or private cloud. Can also be a full URL, eg `https://mydomain.b2clogin.com/mydomain/other/path/names/oauth2`.
 #' @param version The AAD version, either 1 or 2.
 #' @param authorize_args An optional list of further parameters for the AAD authorization endpoint. These will be included in the request URI as query parameters. Only used if `auth_type="authorization_code"`.
 #' @param token_args An optional list of further parameters for the token endpoint. These will be included in the body of the request.
+#' @param on_behalf_of For the on-behalf-of authentication type, a token. This should be either an AzureToken object, or a string containing the JWT-encoded token itself.
 #'
 #' @details
 #' `get_azure_token` does much the same thing as [httr::oauth2.0_token()], but customised for Azure. It obtains an OAuth token, first by checking if a cached value exists on disk, and if not, acquiring it from the AAD server. `delete_azure_token` deletes a cached token, and `list_azure_tokens` lists currently cached tokens.
 #'
 #' The `resource` arg should be a single URL or GUID for AAD v1.0, and a vector of scopes for AAD v2.0. The latter consist of a URL or a GUID, along with a path that designates the scope. If a v2.0 scope doesn't have a path, `get_azure_token` will append the `/.default` path with a warning. A special scope is `offline_access`, which requests a refresh token from AAD along with the access token: without this scope, you will have to reauthenticate if you want to refresh the token.
+#'
+#' For B2C logins, the `aad_host` argument can be a full URL including the tenant and arbitrary path components, but excluding the specific endpoint.
 #'
 #' `token_hash` computes the MD5 hash of its arguments. This is used by AzureAuth to identify tokens for caching purposes.
 #'
@@ -30,16 +33,24 @@
 #' 
 #' 2. The **device_code** method is similar in concept to authorization_code, but is meant for situations where you are unable to browse the Internet -- for example if you don't have a browser installed or your computer has input constraints. First, `get_azure_token` contacts the AAD devicecode endpoint, which responds with a login URL and an access code. You then visit the URL and enter the code, possibly using a different computer. Meanwhile, `get_azure_token` polls the AAD access endpoint for a token, which is provided once you have entered the code.
 #' 
-#' 3. The **client_credentials** method is much simpler than the above methods, requiring only one step. `get_azure_token` contacts the access endpoint, passing it either the app secret or the certificate (which you supply in the `password` or `certificate` argument respectively). Once the credentials are verified, the endpoint returns the token. This is the method typically used by service accounts.
+#' 3. The **client_credentials** method is much simpler than the above methods, requiring only one step. `get_azure_token` contacts the access endpoint, passing it either the app secret or the certificate assertion (which you supply in the `password` or `certificate` argument respectively). Once the credentials are verified, the endpoint returns the token. This is the method typically used by service accounts.
 #' 
 #' 4. The **resource_owner** method also requires only one step. In this method, `get_azure_token` passes your (personal) username and password to the AAD access endpoint, which validates your credentials and returns the token.
 #'
-#' If the authentication method is not specified, it is chosen based on the presence or absence of the `password`,  `username` and `certificate` arguments, and whether httpuv is installed.
+#' 5. The **on_behalf_of** method is used to authenticate with an Azure resource by passing a token obtained beforehand. It is mostly used by intermediate apps to authenticate for users. In particular, you can use this method to obtain tokens for multiple resources, while only requiring the user to authenticate once: see the examples below.
+#'
+#' If the authentication method is not specified, it is chosen based on the presence or absence of the other arguments, and whether httpuv is installed.
 #'
 #' The httpuv package must be installed to use the authorization_code method, as this requires a web server to listen on the (local) redirect URI. See [httr::oauth2.0_token] for more information; note that Azure does not support the `use_oob` feature of the httr OAuth 2.0 token class.
 #'
 #' Similarly, since the authorization_code method opens a browser to load the AAD authorization page, your machine must have an Internet browser installed that can be run from inside R. In particular, if you are using a Linux [Data Science Virtual Machine](https://azure.microsoft.com/en-us/services/virtual-machines/data-science-virtual-machines/) in Azure, you may run into difficulties; use one of the other methods instead.
 #'
+#' @section Certificate authentication:
+#' OAuth tokens can be authenticated via an SSL/TLS certificate, which is considered more secure than a client secret. To do this, use the `certificate` argument, which can contain any of the following:
+#' - The name of a PEM or PFX file, containing _both_ the private key and the public certificate.
+#' - A certificate object from the AzureKeyVault package, representing a cert stored in the Key Vault service.
+#' - A call to the `cert_assertion()` function to customise details of the requested token, eg the duration, expiry date, custom claims, etc. See the examples below.
+#' 
 #' @section Caching:
 #' AzureAuth differs from httr in its handling of token caching in a number of ways. First, caching is based on all the inputs to `get_azure_token` as listed above. Second, it defines its own directory for cached tokens, using the rappdirs package. On recent Windows versions, this will usually be in the location `C:\\Users\\(username)\\AppData\\Local\\AzureR`. On Linux, it will be in `~/.config/AzureR`, and on MacOS, it will be in `~/Library/Application Support/AzureR`. Note that a single directory is used for all tokens, and the working directory is not touched (which significantly lessens the risk of accidentally introducing cached tokens into source control).
 #'
@@ -53,7 +64,7 @@
 #' For `get_azure_token`, an object of class either `AzureTokenV1` or `AzureTokenV2` depending on whether the token is for AAD v1.0 or v2.0. For `list_azure_tokens`, a list of such objects retrieved from disk.
 #' 
 #' @seealso
-#' [AzureToken], [httr::oauth2.0_token], [httr::Token],
+#' [AzureToken], [httr::oauth2.0_token], [httr::Token], [cert_assertion]
 #'
 #' [Azure Active Directory for developers](https://docs.microsoft.com/en-us/azure/active-directory/develop/),
 #' [Device code flow on OAuth.com](https://www.oauth.com/oauth2-servers/device-flow/token-request/),
@@ -76,13 +87,22 @@
 #'     password="app_secret")
 #'
 #' # authenticate to your resource with the resource_owner method: provide your username and password
-#' get_azure_token(resource="https://myresource/", tenant="mytenant", app="app_id",
+#' get_azure_token("https://myresource/", tenant="mytenant", app="app_id",
 #'     username="user", password="abcdefg")
+#'
+#' # obtaining multiple tokens: authenticate (interactively) once...
+#' tok0 <- get_azure_token("serviceapp_id", tenant="mytenant", app="clientapp_id",
+#'     auth_type="authorization_code")
+#' # ...then get tokens for each resource (Resource Manager and MS Graph) with on_behalf_of
+#' tok1 <- get_azure_token("https://management.azure.com/", tenant="mytenant," app="serviceapp_id",
+#'     password="serviceapp_secret", on_behalf_of=tok0)
+#' tok2 <- get_azure_token("https://graph.microsoft.com/", tenant="mytenant," app="serviceapp_id",
+#'     password="serviceapp_secret", on_behalf_of=tok0)
 #'
 #'
 #' # use a different redirect URI to the default localhost:1410
 #' get_azure_token("https://management.azure.com/", tenant="mytenant", app="app_id",
-#'     authorize_args=list(redirect_uri="http://127.255.10.1:8000"))
+#'     authorize_args=list(redirect_uri="http://localhost:8000"))
 #'
 #'
 #' # request an AAD v1.0 token for Resource Manager (the default)
@@ -103,25 +123,45 @@
 #' # delete a saved token by specifying its MD5 hash
 #' delete_azure_token(hash="7ea491716e5b10a77a673106f3f53bfd")
 #'
+#'
+#' # authenticating for B2C logins (custom AAD host)
+#' get_azure_token("https://mydomain.com", "mytenant", "app_id", "password",
+#'     aad_host="https://mytenant.b2clogin.com/tfp/mytenant.onmicrosoft.com/custom/oauth2")
+#'
+#'
+#' # authenticating with a certificate
+#' get_azure_token("https://management.azure.com/", "mytenant", "app_id",
+#'     certificate="mycert.pem")
+#'
+#' # authenticating with a certificate stored in Azure Key Vault
+#' cert <- AzureKeyVault::key_vault("myvault")$certificates$get("mycert")
+#' get_azure_token("https://management.azure.com/", "mytenant", "app_id",
+#'     certificate=cert)
+#'
+#' # get a token valid for 2 hours (default is 1 hour)
+#' get_azure_token("https://management.azure.com/", "mytenant", "app_id",
+#'     certificate=cert_assertion("mycert.pem", duration=2*3600)
+#'
 #' }
 #' @export
 get_azure_token <- function(resource, tenant, app, password=NULL, username=NULL, certificate=NULL, auth_type=NULL,
                             aad_host="https://login.microsoftonline.com/", version=1,
-                            authorize_args=list(), token_args=list())
+                            authorize_args=list(), token_args=list(), on_behalf_of=NULL)
 {
     if(normalize_aad_version(version) == 1)
         AzureTokenV1$new(resource, tenant, app, password, username, certificate, auth_type, aad_host,
-                         authorize_args, token_args)
+                         authorize_args, token_args, on_behalf_of)
     else AzureTokenV2$new(resource, tenant, app, password, username, certificate, auth_type, aad_host,
-                          authorize_args, token_args)
+                          authorize_args, token_args, on_behalf_of)
 }
 
 
-select_auth_type <- function(password, username, certificate, auth_type)
+select_auth_type <- function(password, username, certificate, auth_type, on_behalf_of)
 {
     if(!is.null(auth_type))
     {
-        if(!auth_type %in% c("authorization_code", "device_code", "client_credentials", "resource_owner"))
+        if(!auth_type %in%
+           c("authorization_code", "device_code", "client_credentials", "resource_owner", "on_behalf_of"))
             stop("Invalid authentication method")
         return(auth_type)
     }
@@ -142,7 +182,11 @@ select_auth_type <- function(password, username, certificate, auth_type)
         else "authorization_code"
     }
     else if((got_pwd && !got_user) || got_cert)
-        "client_credentials"
+    {
+        if(is_empty(on_behalf_of))
+            "client_credentials"
+        else "on_behalf_of"
+    }
     else stop("Can't select authentication method", call.=FALSE)
 }
 
@@ -153,7 +197,7 @@ select_auth_type <- function(password, username, certificate, auth_type)
 #' @export
 delete_azure_token <- function(resource, tenant, app, password=NULL, username=NULL, certificate=NULL, auth_type=NULL,
                                aad_host="https://login.microsoftonline.com/", version=1,
-                               authorize_args=list(), token_args=list(),
+                               authorize_args=list(), token_args=list(), on_behalf_of=NULL,
                                hash=NULL, confirm=TRUE)
 {
     if(!dir.exists(AzureR_dir()))
@@ -161,7 +205,7 @@ delete_azure_token <- function(resource, tenant, app, password=NULL, username=NU
 
     if(is.null(hash))
         hash <- token_hash(resource, tenant, app, password, username, certificate, auth_type, aad_host, version,
-                           authorize_args, token_args)
+                           authorize_args, token_args, on_behalf_of)
 
     if(confirm && interactive())
     {
@@ -214,13 +258,13 @@ list_azure_tokens <- function()
 #' @export
 token_hash <- function(resource, tenant, app, password=NULL, username=NULL, certificate=NULL, auth_type=NULL,
                        aad_host="https://login.microsoftonline.com/", version=1,
-                       authorize_args=list(), token_args=list())
+                       authorize_args=list(), token_args=list(), on_behalf_of=NULL)
 {
     # reconstruct the hash for the token object from the inputs
     version <- normalize_aad_version(version)
     tenant <- normalize_tenant(tenant)
-    auth_type <- select_auth_type(password, username, certificate, auth_type)
-    client <- aad_request_credentials(app, password, username, certificate, auth_type)
+    auth_type <- select_auth_type(password, username, certificate, auth_type, on_behalf_of)
+    client <- aad_request_credentials(app, password, username, certificate, auth_type, on_behalf_of)
 
     if(version == 1)
         scope <- NULL

@@ -28,7 +28,7 @@ public=list(
 
     initialize=function(tenant, app, password=NULL, username=NULL, certificate=NULL, auth_type=NULL,
                         aad_host="https://login.microsoftonline.com/",
-                        authorize_args=list(), token_args=list())
+                        authorize_args=list(), token_args=list(), on_behalf_of=NULL)
     {
         # fail if this constructor is called directly
         if(is.null(self$version))
@@ -36,9 +36,9 @@ public=list(
 
         self$aad_host <- aad_host
         self$tenant <- normalize_tenant(tenant)
-        self$auth_type <- select_auth_type(password, username, certificate, auth_type)
+        self$auth_type <- select_auth_type(password, username, certificate, auth_type, on_behalf_of)
 
-        self$client <- aad_request_credentials(app, password, username, certificate, self$auth_type)
+        self$client <- aad_request_credentials(app, password, username, certificate, self$auth_type, on_behalf_of)
 
         self$authorize_args <- authorize_args
         self$token_args <- token_args
@@ -48,6 +48,7 @@ public=list(
             authorization_code=init_authcode,
             device_code=init_devcode,
             client_credentials=init_clientcred,
+            on_behalf_of=init_clientcred,
             resource_owner=init_resowner
         )
         environment(private$initfunc) <- parent.env(environment())
@@ -70,12 +71,7 @@ public=list(
 
         # notify user if interactive auth and no refresh token
         if(self$auth_type %in% c("authorization_code", "device_code") && is.null(self$credentials$refresh_token))
-        {
-            if(self$version == 1)
-                message("Server did not provide a refresh token: please reauthenticate to refresh.")
-            else message("Server did not provide a refresh token: you will have to reauthenticate to refresh.\n",
-                         "Add the 'offline_access' scope to obtain a refresh token.")
-        }
+            private$norenew_alert()
 
         self$cache()
         self
@@ -115,9 +111,13 @@ public=list(
 
         res <- if(!is.null(self$credentials$refresh_token))
         {
-            body <- utils::modifyList(self$client,
-                list(grant_type="refresh_token", refresh_token=self$credentials$refresh_token))
-            body <- private$build_access_body(body)
+            body <- list(grant_type="refresh_token",
+                client_id=self$client$client_id,
+                client_secret=self$client$client_secret,
+                client_assertion=self$client$client_assertion,
+                client_assertion_type=self$client$client_assertion_type,
+                refresh_token=self$credentials$refresh_token
+            )
 
             uri <- private$aad_endpoint("token")
             httr::POST(uri, body=body, encode="form")
@@ -180,16 +180,27 @@ private=list(
     build_access_body=function(body=self$client)
     {
         stopifnot(is.list(self$token_args))
-        c(body, self$authorize_args, resource=self$resource)
+
+        # fill in cert assertion details
+        body$client_assertion <- build_assertion(body$client_assertion,
+            self$tenant, body$client_id, self$aad_host, self$version)
+
+        c(body, self$token_args, resource=self$resource)
     },
 
     aad_endpoint=function(type)
     {
         uri <- httr::parse_url(self$aad_host)
-        uri$path <- file.path(self$tenant, "oauth2", type)
+        uri$path <- if(nchar(uri$path) == 0)
+            file.path(self$tenant, "oauth2", type)
+        else file.path(uri$path, type)
         httr::build_url(uri)
-    }
+    },
 
+    norenew_alert=function()
+    {
+        message("Server did not provide a refresh token: please reauthenticate to refresh.")
+    }
 ))
 
 
@@ -214,14 +225,27 @@ private=list(
     build_access_body=function(body=self$client)
     {
         stopifnot(is.list(self$token_args))
-        c(body, self$authorize_args, scope=paste(self$scope, collapse=" "))
+
+        # fill in cert assertion details
+        body$client_assertion <- build_assertion(body$client_assertion,
+            self$tenant, body$client_id, self$aad_host, self$version)
+
+        c(body, self$token_args, scope=paste(self$scope, collapse=" "))
     },
 
     aad_endpoint=function(type)
     {
         uri <- httr::parse_url(self$aad_host)
-        uri$path <- file.path(self$tenant, "oauth2/v2.0", type)
+        uri$path <- if(nchar(uri$path) == 0)
+            file.path(self$tenant, "oauth2/v2.0", type)
+        else file.path(uri$path, type)
         httr::build_url(uri)
+    },
+
+    norenew_alert=function()
+    {
+        message("Server did not provide a refresh token: you will have to reauthenticate to refresh.\n",
+                "Add the 'offline_access' scope to obtain a refresh token.")
     }
 ))
 

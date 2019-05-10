@@ -5,9 +5,19 @@ app <- Sys.getenv("AZ_TEST_APP_ID")
 username <- Sys.getenv("AZ_TEST_USERNAME")
 password <- Sys.getenv("AZ_TEST_PASSWORD")
 native_app <- Sys.getenv("AZ_TEST_NATIVE_APP_ID")
+cert_app <- Sys.getenv("AZ_TEST_CERT_APP_ID")
+cert_file <- Sys.getenv("AZ_TEST_CERT_FILE")
 
-if(tenant == "" || app == "" || username == "" || password == "" || native_app == "")
+if(tenant == "" || app == "" || username == "" || password == "" || native_app == "" ||
+   cert_app == "" || cert_file == "")
     skip("Authentication tests skipped: ARM credentials not set")
+
+aut_hash <- Sys.getenv("AZ_TEST_AUT_HASH")
+ccd_hash <- Sys.getenv("AZ_TEST_CCD_HASH")
+dev_hash <- Sys.getenv("AZ_TEST_DEV_HASH")
+
+if(aut_hash == "" || ccd_hash == "" || dev_hash == "")
+    skip("Authentication tests skipped: token hashes not set")
 
 if(system.file(package="httpuv") == "")
     skip("Authentication tests skipped: httpuv must be installed")
@@ -19,10 +29,6 @@ if(!interactive())
 test_that("v1.0 simple authentication works",
 {
     suppressWarnings(file.remove(dir(AzureR_dir(), full.names=TRUE)))
-
-    aut_hash <- "a6496c5290d313b87e5bbfa705bb6b93"
-    ccd_hash <- "48f7c62cb4bece73cb699a79e6cffd6d"
-    dev_hash <- "805098332527821e5e8d79cb34e3f3a7"
 
     res <- "https://management.azure.com/"
 
@@ -89,3 +95,38 @@ test_that("Providing optional args works",
         delete_azure_token(res, tenant, native_app, username=username, auth_type="authorization_code", confirm=FALSE))
 })
 
+
+test_that("Providing path in aad_host works",
+{
+    res <- "https://management.azure.com/"
+    aad_url <- file.path("https://login.microsoftonline.com", normalize_tenant(tenant), "oauth2")
+
+    tok <- get_azure_token(res, tenant, app, password=password, aad_host=aad_url)
+    expect_true(is_azure_token(tok))
+})
+
+
+test_that("On-behalf-of flow works",
+{
+    tok0 <- get_azure_token(app, tenant, native_app)
+    expect_true(is_azure_token(tok0))
+
+    name0 <- decode_jwt(tok0$credentials$access_token)$payload$name
+    expect_type(name0, "character")
+
+    tok1 <- get_azure_token("https://graph.microsoft.com/", tenant, app, password, on_behalf_of=tok0)
+    expect_true(is_azure_token(tok1))
+
+    name1 <- decode_jwt(tok1$credentials$access_token)$payload$name
+    expect_identical(name0, name1)
+
+    expect_silent(tok1$refresh())
+})
+
+
+test_that("Certificate authentication works",
+{
+    res <- "https://management.azure.com/"
+    tok <- get_azure_token(res, tenant, cert_app, certificate=cert_file)
+    expect_true(is_azure_token(tok))
+})

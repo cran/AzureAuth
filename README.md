@@ -2,23 +2,23 @@
 
 [![CRAN](https://www.r-pkg.org/badges/version/AzureAuth)](https://cran.r-project.org/package=AzureAuth)
 ![Downloads](https://cranlogs.r-pkg.org/badges/AzureAuth)
-[![Travis Build Status](https://travis-ci.org/cloudyr/AzureAuth.png?branch=master)](https://travis-ci.org/cloudyr/AzureAuth)
+[![Travis Build Status](https://travis-ci.org/Azure/AzureAuth.png?branch=master)](https://travis-ci.org/Azure/AzureAuth)
 
-AzureAuth provides Azure Active Directory (AAD) authentication functionality for R users of Microsoft's Azure cloud. Use this package to obtain OAuth 2.0 tokens for Azure services including Azure Resource Manager, Azure Storage and others. Both AAD v1.0 and v2.0 are supported.
+AzureAuth provides [Azure Active Directory](https://docs.microsoft.com/azure/active-directory/develop/) (AAD) authentication functionality for R users of Microsoft's Azure cloud. Use this package to obtain OAuth 2.0 tokens for Azure services including Azure Resource Manager, Azure Storage and others. Both AAD v1.0 and v2.0 are supported.
 
-You can install the development version of the package from GitHub, with `devtools::install_github("cloudyr/AzureAuth")`.
+The primary repo for this package is at https://github.com/Azure/AzureAuth; please submit issues and PRs there. It is also mirrored at the Cloudyr org at https://github.com/cloudyr/AzureAuth. You can install the development version of the package with `devtools::install_github("Azure/AzureAuth")`.
 
 ## Obtaining tokens
 
 The main function in AzureAuth is `get_azure_token`, which obtains an OAuth token from AAD. The token is cached in a user-specific directory using the [rappdirs](https://github.com/r-lib/rappdirs) package, and future requests will use the cached token without needing you to reauthenticate.
-
-For reasons of CRAN policy, AzureAuth will ask you for permission to create this directory. Unless you have a specific reason otherwise, it's recommended that you allow the directory to be created. Note that most other cloud engineering tools save credentials in this way, including Docker, Kubernetes, and the Azure CLI itself.
 
 ```r
 library(AzureAuth)
 
 token <- get_azure_token(resource="myresource", tenant="mytenant", app="app_id", ...)
 ```
+
+For reasons of CRAN policy, the first time AzureAuth is loaded, it will prompt you for permission to create this directory. Unless you have a specific reason otherwise, it's recommended that you allow the directory to be created. Note that most other cloud engineering tools save credentials in this way, including Docker, Kubernetes, and the Azure CLI itself. The prompt only appears in an interactive session; if AzureAuth is loaded in a batch script, the directory is not created if it doesn't already exist.
 
 Other supplied functions include `list_azure_tokens`, `delete_azure_token` and `clean_token_directory`, to let you manage the token cache.
 
@@ -90,10 +90,18 @@ get_azure_token("myresource", "mytenant", "app_id",
                 password="client_secret", on_behalf_of=token)
 ```
 
+Finally, AzureAuth provides `get_managed_token` to obtain tokens from within a managed identity. This is a VM, service or container in Azure that can authenticate as itself, which removes the need to save secret passwords or certificates.
+
+```r
+# run this from within an Azure VM or container for which an identity has been setup
+get_managed_token("myresource")
+```
+
+
 ## Acknowledgements
 
 The AzureAuth interface is based on the OAuth framework in the [httr](https://github.com/r-lib/httr) package, customised and streamlined for Azure. It is an independent implementation of OAuth, but benefited greatly from the work done by Hadley Wickham and the rest of the httr development team.
 
----
+----
 [![cloudyr project logo](https://i.imgur.com/JHS98Y7.png)](https://github.com/cloudyr)
 

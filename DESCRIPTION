@@ -1,6 +1,6 @@
 Package: AzureAuth
 Title: Authentication Services for Azure Active Directory
-Version: 1.1.1
+Version: 1.2.0
 Authors@R: c(
     person("Hong", "Ooi", , "hongooi@microsoft.com", role = c("aut", "cre")),
     person("httr development team", role="ctb", comment="Original OAuth listener code"),
@@ -15,10 +15,10 @@ License: MIT + file LICENSE
 VignetteBuilder: knitr
 Depends: R (>= 3.3)
 Imports: utils, httr (>= 1.3), openssl, jsonlite, jose, R6, rappdirs
-Suggests: knitr, testthat, httpuv
+Suggests: knitr, testthat, httpuv, shiny, AzureRMR, AzureGraph
 RoxygenNote: 6.1.1
 NeedsCompilation: no
-Packaged: 2019-06-07 06:25:16 UTC; hongo
+Packaged: 2019-08-20 09:01:01 UTC; hongo
 Author: Hong Ooi [aut, cre],
   httr development team [ctb] (Original OAuth listener code),
   Scott Holden [ctb] (Advice on AAD authentication),
@@ -26,4 +26,4 @@ Author: Hong Ooi [aut, cre],
   Microsoft [cph]
 Maintainer: Hong Ooi <hongooi@microsoft.com>
 Repository: CRAN
-Date/Publication: 2019-06-07 17:30:13 UTC
+Date/Publication: 2019-08-21 15:00:02 UTC

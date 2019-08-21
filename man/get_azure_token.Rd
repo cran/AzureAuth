@@ -12,12 +12,13 @@
 \alias{is_azure_v2_token}
 \title{Manage Azure Active Directory OAuth 2.0 tokens}
 \usage{
-get_managed_token(resource, token_args = list())
+get_managed_token(resource, token_args = list(), use_cache = TRUE)
 
 get_azure_token(resource, tenant, app, password = NULL,
   username = NULL, certificate = NULL, auth_type = NULL,
   aad_host = "https://login.microsoftonline.com/", version = 1,
-  authorize_args = list(), token_args = list(), on_behalf_of = NULL)
+  authorize_args = list(), token_args = list(), use_cache = TRUE,
+  on_behalf_of = NULL, auth_code = NULL, device_creds = NULL)
 
 delete_azure_token(resource, tenant, app, password = NULL,
   username = NULL, certificate = NULL, auth_type = NULL,
@@ -45,11 +46,13 @@ is_azure_v2_token(object)
 
 \item{token_args}{An optional list of further parameters for the token endpoint. These will be included in the body of the request for \code{get_azure_token}, or as URI query parameters for \code{get_managed_token}.}
 
+\item{use_cache}{If TRUE and cached credentials exist, use them instead of obtaining a new token. Set this to FALSE to bypass the cache.}
+
 \item{tenant}{Your tenant. This can be a name ("myaadtenant"), a fully qualified domain name ("myaadtenant.onmicrosoft.com" or "mycompanyname.com"), or a GUID.}
 
 \item{app}{The client/app ID to use to authenticate with.}
 
-\item{password}{The password, either for the app, or your username if supplied. See 'Details' below.}
+\item{password}{For most authentication flows, this is the password for the \emph{app} where needed, also known as the client secret. For the resource owner grant, this is your personal account password. See 'Details' below.}
 
 \item{username}{Your AAD username, if using the resource owner grant. See 'Details' below.}
 
@@ -57,13 +60,17 @@ is_azure_v2_token(object)
 
 \item{auth_type}{The authentication type. See 'Details' below.}
 
-\item{aad_host}{URL for your AAD host. For the public Azure cloud, this is \code{https://login.microsoftonline.com/}. Change this if you are using a government or private cloud. Can also be a full URL, eg \code{https://mydomain.b2clogin.com/mydomain/other/path/names/oauth2}.}
+\item{aad_host}{URL for your AAD host. For the public Azure cloud, this is \code{https://login.microsoftonline.com/}. Change this if you are using a government or private cloud. Can also be a full URL, eg \code{https://mydomain.b2clogin.com/mydomain/other/path/names/oauth2} (this is relevant mainly for Azure B2C logins).}
 
 \item{version}{The AAD version, either 1 or 2.}
 
 \item{authorize_args}{An optional list of further parameters for the AAD authorization endpoint. These will be included in the request URI as query parameters. Only used if \code{auth_type="authorization_code"}.}
 
 \item{on_behalf_of}{For the on-behalf-of authentication type, a token. This should be either an AzureToken object, or a string containing the JWT-encoded token itself.}
+
+\item{auth_code}{For the \code{authorization_code} flow, the code. Only used if \code{auth_type == "authorization_code"}.}
+
+\item{device_creds}{For the \code{device_code} flow, the device credentials used to verify the session between the client and the server. Only used if \code{auth_type == "device_code"}.}
 
 \item{hash}{The MD5 hash of this token, computed from the above inputs. Used by \code{delete_azure_token} to identify a cached token to delete.}
 
@@ -79,13 +86,11 @@ Use these functions to authenticate with Azure Active Directory (AAD).
 
 \code{get_managed_token} is a specialised function to acquire tokens for a \emph{managed identity}. This is an Azure service, such as a VM or container, that has been assigned its own identity and can be granted access permissions like a regular user. The advantage of managed identities over the other authentication methods (see below) is that you don't have to store a secret password, which improves security. Note that \code{get_managed_token} can only be used from within the managed identity itself.
 
-The \code{resource} arg should be a single URL or GUID for AAD v1.0, and a vector of scopes for AAD v2.0. The latter consist of a URL or a GUID, along with a path that designates the scope. If a v2.0 scope doesn't have a path, \code{get_azure_token} will append the \code{/.default} path with a warning. A special scope is \code{offline_access}, which requests a refresh token from AAD along with the access token: without this scope, you will have to reauthenticate if you want to refresh the token.
+The \code{resource} arg should be a single URL or GUID for AAD v1.0. For AAD v2.0, it should be a vector of \emph{scopes}, where each scope consists of a URL or GUID along with a path that designates the type of access requested. If a v2.0 scope doesn't have a path, \code{get_azure_token} will append the \code{/.default} path with a warning. A special scope is \code{offline_access}, which requests a refresh token from AAD along with the access token: without this scope, you will have to reauthenticate if you want to refresh the token.
 
-For B2C logins, the \code{aad_host} argument can be a full URL including the tenant and arbitrary path components, but excluding the specific endpoint.
+The \code{auth_code} and \code{device_creds} arguments are intended for use in embedded scenarios, eg when AzureAuth is loaded from within a Shiny web app. They enable the flow authorization step to be separated from the token acquisition step, which is necessary within an app; you can generally ignore these arguments when using AzureAuth interactively or as part of an R script. See the help for \link{build_authorization_uri} for examples on their use.
 
-\code{token_hash} computes the MD5 hash of its arguments. This is used by AzureAuth to identify tokens for caching purposes.
-
-Note that tokens are only cached if you allowed AzureAuth to create a data directory at package startup.
+\code{token_hash} computes the MD5 hash of its arguments. This is used by AzureAuth to identify tokens for caching purposes. Note that tokens are only cached if you allowed AzureAuth to create a data directory at package startup.
 
 One particular use of the \code{authorize_args} argument is to specify a different redirect URI to the default; see the examples below.
 }
@@ -116,6 +121,15 @@ OAuth tokens can be authenticated via an SSL/TLS certificate, which is considere
 }
 }
 
+\section{OpenID Connect}{
+
+\code{get_azure_token} can be used to obtain ID tokens along with regular OAuth access tokens, when using an interactive authentication flow (authorization_code or device_code). The behaviour depends on the AAD version:
+\itemize{
+\item AAD v1.0 will return an ID token as well as the access token by default; you don't have to do anything extra. However, AAD v1.0 will not \emph{refresh} the ID token when it expires; you must reauthenticate to get a new one. To ensure you don't pull the cached version of the credentials, specify \code{use_cache=FALSE} in the calls to \code{get_azure_token}.
+\item Unlike AAD v1.0, AAD v2.0 does not return an ID token by default. To get a token, specify \code{openid} as a scope. On the other hand it \emph{does} refresh the ID token, so bypassing the cache is not needed. It's recommended to use AAD v2.0 if you only want an ID token; see the examples below.
+}
+}
+
 \section{Caching}{
 
 AzureAuth differs from httr in its handling of token caching in a number of ways. First, caching is based on all the inputs to \code{get_azure_token} as listed above. Second, it defines its own directory for cached tokens, using the rappdirs package. On recent Windows versions, this will usually be in the location \code{C:\\Users\\(username)\\AppData\\Local\\AzureR}. On Linux, it will be in \code{~/.config/AzureR}, and on MacOS, it will be in \code{~/Library/Application Support/AzureR}. Note that a single directory is used for all tokens, and the working directory is not touched (which significantly lessens the risk of accidentally introducing cached tokens into source control).
@@ -129,7 +143,9 @@ To delete \emph{all} cached tokens, use \code{clean_token_directory}.
 
 \section{Value}{
 
-For \code{get_azure_token}, an object of class either \code{AzureTokenV1} or \code{AzureTokenV2} depending on whether the token is for AAD v1.0 or v2.0. For \code{list_azure_tokens}, a list of such objects retrieved from disk.
+For \code{get_azure_token}, an object inheriting from \code{AzureToken}. The specific class depends on the authentication flow: \code{AzureTokenAuthCode}, \code{AzureTokenDeviceCode}, \code{AzureTokenClientCreds}, \code{AzureTokenOnBehalfOf}, \code{AzureTokenResOwner}. For \code{get_managed_token}, a similar object of class \code{AzureTokenManaged}.
+
+For \code{list_azure_tokens}, a list of such objects retrieved from disk.
 }
 
 \examples{
@@ -156,10 +172,16 @@ get_azure_token("https://myresource/", tenant="mytenant", app="app_id",
 tok0 <- get_azure_token("serviceapp_id", tenant="mytenant", app="clientapp_id",
     auth_type="authorization_code")
 # ...then get tokens for each resource (Resource Manager and MS Graph) with on_behalf_of
-tok1 <- get_azure_token("https://management.azure.com/", tenant="mytenant," app="serviceapp_id",
+tok1 <- get_azure_token("https://management.azure.com/", tenant="mytenant", app="serviceapp_id",
     password="serviceapp_secret", on_behalf_of=tok0)
-tok2 <- get_azure_token("https://graph.microsoft.com/", tenant="mytenant," app="serviceapp_id",
+tok2 <- get_azure_token("https://graph.microsoft.com/", tenant="mytenant", app="serviceapp_id",
     password="serviceapp_secret", on_behalf_of=tok0)
+
+
+# authorization_code flow with app registered in AAD as a web rather than a native client:
+# supply the client secret in the password arg
+get_azure_token("https://management.azure.com/", "mytenant", "app_id",
+    password="app_secret", auth_type="authorization_code")
 
 
 # use a different redirect URI to the default localhost:1410
@@ -172,6 +194,13 @@ token1 <- get_azure_token("https://management.azure.com/", "mytenant", "app_id")
 
 # same request to AAD v2.0, along with a refresh token
 token2 <- get_azure_token(c("https://management.azure.com/.default", "offline_access"),
+    "mytenant", "app_id", version=2)
+
+# requesting multiple scopes (Microsoft Graph) with AAD 2.0
+tok <- get_azure_token(c("https://graph.microsoft.com/User.Read.All",
+                         "https://graph.microsoft.com/User.ReadWrite.All",
+                         "https://graph.microsoft.com/Directory.ReadWrite.All",
+                         "offline_access"),
     "mytenant", "app_id", version=2)
 
 
@@ -202,16 +231,27 @@ get_azure_token("https://management.azure.com/", "mytenant", "app_id",
 
 # get a token valid for 2 hours (default is 1 hour)
 get_azure_token("https://management.azure.com/", "mytenant", "app_id",
-    certificate=cert_assertion("mycert.pem", duration=2*3600)
+    certificate=cert_assertion("mycert.pem", duration=2*3600))
 
 
-# get a token from within a managed service identity (VM, container or service)
+# ID token with AAD v1.0
+# if you only want an ID token, set the resource to blank ("")
+tok <- get_azure_token("", "mytenant", "app_id", use_cache=FALSE)
+extract_jwt(tok, "id")
+
+# ID token with AAD v2.0 (recommended)
+tok2 <- get_azure_token(c("openid", "offline_access"), "mytenant", "app_id", version=2)
+extract_jwt("id")
+
+
+# get a token from within a managed identity (VM, container or service)
 get_managed_token("https://management.azure.com/")
 
 }
 }
 \seealso{
-\link{AzureToken}, \link[httr:oauth2.0_token]{httr::oauth2.0_token}, \link[httr:Token]{httr::Token}, \link{cert_assertion}
+\link{AzureToken}, \link[httr:oauth2.0_token]{httr::oauth2.0_token}, \link[httr:Token]{httr::Token}, \link{cert_assertion},
+\link{build_authorization_uri}, \link{get_device_creds}
 
 \href{https://docs.microsoft.com/en-us/azure/active-directory/develop/}{Azure Active Directory for developers},
 \href{https://www.oauth.com/oauth2-servers/device-flow/token-request/}{Device code flow on OAuth.com},

@@ -1,8 +1,8 @@
-# AzureAuth
+# AzureAuth <img src="man/figures/logo.png" align="right" width=150 />
 
 [![CRAN](https://www.r-pkg.org/badges/version/AzureAuth)](https://cran.r-project.org/package=AzureAuth)
 ![Downloads](https://cranlogs.r-pkg.org/badges/AzureAuth)
-[![Travis Build Status](https://travis-ci.org/Azure/AzureAuth.png?branch=master)](https://travis-ci.org/Azure/AzureAuth)
+[![Build Status](https://asiadatascience.visualstudio.com/AzureR/_apis/build/status/Azure.AzureAuth?branchName=master)](https://asiadatascience.visualstudio.com/AzureR/_build/latest?definitionId=2&branchName=master)
 
 AzureAuth provides [Azure Active Directory](https://docs.microsoft.com/azure/active-directory/develop/) (AAD) authentication functionality for R users of Microsoft's Azure cloud. Use this package to obtain OAuth 2.0 tokens for Azure services including Azure Resource Manager, Azure Storage and others. Both AAD v1.0 and v2.0 are supported.
 
@@ -90,18 +90,41 @@ get_azure_token("myresource", "mytenant", "app_id",
                 password="client_secret", on_behalf_of=token)
 ```
 
-Finally, AzureAuth provides `get_managed_token` to obtain tokens from within a managed identity. This is a VM, service or container in Azure that can authenticate as itself, which removes the need to save secret passwords or certificates.
+### Managed identities
+
+AzureAuth provides `get_managed_token` to obtain tokens from within a managed identity. This is a VM, service or container in Azure that can authenticate as itself, which removes the need to save secret passwords or certificates.
 
 ```r
 # run this from within an Azure VM or container for which an identity has been setup
 get_managed_token("myresource")
 ```
 
+### Inside a web app
+
+Using the interactive flows (authorization_code and device_code) from within a Shiny app requires separating the authorization (logging in to Azure) step from the token acquisition step. For this purpose, AzureAuth provides the `build_authorization_uri` and `get_device_creds` functions. You can use these from within your app to carry out the authorization, and then pass the resulting credentials to `get_azure_token` itself. See the "Authenticating from Shiny" vignette for an example app.
+
+## OpenID Connect
+
+You can also use `get_azure_token` to obtain ID tokens, in addition to access tokens.
+
+With AAD v1.0, using an interactive authentication flow (authorization_code or device_code) will return an ID token by default -- you don't have to do anything extra. However, AAD v1.0 will _not_ refresh the ID token when it expires (only the access token). Because of this, specify `use_cache=FALSE` to avoid picking up cached token credentials which may have been refreshed previously.
+
+AAD v2.0 does not return an ID token by default, but you can get one by adding the `openid` scope. Again, this applies only to interactive authentication. If you only want an ID token, it's recommended to use AAD v2.0.
+
+```r
+# ID token with AAD v1.0
+tok <- get_azure_token("", "mytenant", "app_id", use_cache=FALSE)
+extract_jwt(tok, "id")
+
+# ID token with AAD v2.0 (recommended)
+tok2 <- get_azure_token(c("openid", "offline_access"), "mytenant", "app_id", version=2)
+extract_jwt(tok, "id")
+```
 
 ## Acknowledgements
 
 The AzureAuth interface is based on the OAuth framework in the [httr](https://github.com/r-lib/httr) package, customised and streamlined for Azure. It is an independent implementation of OAuth, but benefited greatly from the work done by Hadley Wickham and the rest of the httr development team.
 
 ----
-[![cloudyr project logo](https://i.imgur.com/JHS98Y7.png)](https://github.com/cloudyr)
+<p align="center"><a href="https://github.com/Azure/AzureR"><img src="https://github.com/Azure/AzureR/raw/master/images/logo2.png" width=800 /></a></p>
 

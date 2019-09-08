@@ -414,6 +414,24 @@ The httpuv package must be installed to use this method, as it requires a web se
 <a class="sourceLine" id="cb10-7" title="7"><span class="kw">delete_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>,</a>
 <a class="sourceLine" id="cb10-8" title="8">                   <span class="dt">password=</span><span class="st">&quot;client_credentials&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;client_credentials&quot;</span>)</a></code></pre></div>
 </div>
+<div id="refreshing" class="section level2">
+<h2>Refreshing</h2>
+<p>A token object can be refreshed by calling its <code>refresh()</code> method. If the token’s credentials contain a refresh token, this is used; otherwise a new access token is obtained by reauthenticating. In most situations you don’t need to worry about this, as the AzureR packages will check if the credentials have expired and automatically refresh them for you.</p>
+<p>One scenario where you might want to refresh manually is using a token for one resource to obtain a token for another resource. Note that in AAD, a refresh token can be used to obtain an access token for any resource or scope that you have permissions for. Thus, for example, you could use a refresh token issued on a request for <code>https://management.azure.com</code> to obtain a new access token for <code>https://graph.microsoft.com</code> (assuming you’ve been granted permission).</p>
+<p>To obtain an access token for a new resource, change the object’s <code>resource</code> (for an AAD v1.0 token) or <code>scope</code> field (for an AAD v2.0 token) before calling <code>refresh()</code>. If you <em>also</em> want to retain the token for the old resource, you should call the <code>clone()</code> method first to create a copy.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb11-1" title="1"><span class="co"># use a refresh token from one resource to get an access token for another resource</span></a>
+<a class="sourceLine" id="cb11-2" title="2">tok &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="st">&quot;https://myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>)</a>
+<a class="sourceLine" id="cb11-3" title="3">tok2 &lt;-<span class="st"> </span>tok<span class="op">$</span><span class="kw">clone</span>()</a>
+<a class="sourceLine" id="cb11-4" title="4">tok2<span class="op">$</span>resource &lt;-<span class="st"> &quot;https://anotherresource&quot;</span></a>
+<a class="sourceLine" id="cb11-5" title="5">tok2<span class="op">$</span><span class="kw">refresh</span>()</a>
+<a class="sourceLine" id="cb11-6" title="6"></a>
+<a class="sourceLine" id="cb11-7" title="7"><span class="co"># same for AAD v2.0</span></a>
+<a class="sourceLine" id="cb11-8" title="8">tok &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="kw">c</span>(<span class="st">&quot;https://myresource/.default&quot;</span>, <span class="st">&quot;offline_access&quot;</span>),</a>
+<a class="sourceLine" id="cb11-9" title="9">    <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>, <span class="dt">version=</span><span class="dv">2</span>)</a>
+<a class="sourceLine" id="cb11-10" title="10">tok2 &lt;-<span class="st"> </span>tok<span class="op">$</span><span class="kw">clone</span>()</a>
+<a class="sourceLine" id="cb11-11" title="11">tok2<span class="op">$</span>scope &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;https://anotherresource/.default&quot;</span>, <span class="st">&quot;offline_access&quot;</span>)</a>
+<a class="sourceLine" id="cb11-12" title="12">tok2<span class="op">$</span><span class="kw">refresh</span>()</a></code></pre></div>
+</div>
 <div id="more-information" class="section level2">
 <h2>More information</h2>
 <p>For the details on Azure Active Directory, consult the <a href="https://docs.microsoft.com/en-us/azure/active-directory/develop/">Microsoft documentation</a>.</p>

@@ -1,3 +1,7 @@
+# AzureAuth 1.2.2
+
+* Only call `utils::askYesNo` if R version is 3.5 or higher.
+
 # AzureAuth 1.2.1
 
 * Pass the resource and scope as explicit parameters to the AAD endpoint when refreshing a token. Among other things, this allows using a refresh token from one resource to obtain an access token for another resource.
@@ -20,7 +24,7 @@
 # AzureAuth 1.1.0
 
 * Much improved support for authenticating with a certificate. In the `certificate` argument, specify either the name of a PEM/PFX file, or an AzureKeyVault object representing a cert.
-* Support providing a path in the `aad_host` argument, for Azure B2C logins. Note that B2C requires https redirect URIs, which are not currently supported by httpuv; rather than the authorization_code flow, use device_code or client_credentials.
+* Support providing a path in the `aad_host` argument, for Azure B2C logins.
 * Fix bug that prevented `token_args` argument from being passed to the token endpoint.
 * If authentication fails using the `authorization_code` flow, print the AAD error message, if possible.
 * Add support for the `on_behalf_of` authorization flow.

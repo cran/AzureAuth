@@ -122,3 +122,19 @@ paste_v2_scopes <- function(scope)
 {
     paste(scope, collapse=" ")
 }
+
+
+# display confirmation prompt, return TRUE/FALSE (no NA)
+get_confirmation <- function(msg, default=TRUE)
+{
+    ok <- if(getRversion() < numeric_version("3.5.0"))
+    {
+        msg <- paste(msg, if(default) "(Yes/no/cancel) " else "(yes/No/cancel) ")
+        yn <- readline(msg)
+        if(nchar(yn) == 0)
+            default
+        else tolower(substr(yn, 1, 1)) == "y"
+    }
+    else utils::askYesNo(msg, default)
+    isTRUE(ok)
+}

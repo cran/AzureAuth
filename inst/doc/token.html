@@ -19,9 +19,9 @@
 
 <style type="text/css">code{white-space: pre;}</style>
 <style type="text/css" data-origin="pandoc">
-a.sourceLine { display: inline-block; line-height: 1.25; }
-a.sourceLine { pointer-events: none; color: inherit; text-decoration: inherit; }
-a.sourceLine:empty { height: 1.2em; }
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode { white-space: pre; position: relative; }
 div.sourceCode { margin: 1em 0; }
@@ -31,14 +31,16 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 code.sourceCode { white-space: pre-wrap; }
-a.sourceLine { text-indent: -1em; padding-left: 1em; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
-pre.numberSource a.sourceLine
-  { position: relative; left: -4em; }
-pre.numberSource a.sourceLine::before
-  { content: attr(title);
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
     position: relative; left: -1em; text-align: right; vertical-align: baseline;
-    border: none; pointer-events: all; display: inline-block;
+    border: none; display: inline-block;
     -webkit-touch-callout: none; -webkit-user-select: none;
     -khtml-user-select: none; -moz-user-select: none;
     -ms-user-select: none; user-select: none;
@@ -47,9 +49,9 @@ pre.numberSource a.sourceLine::before
   }
 pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
 div.sourceCode
-  {  }
+  {   }
 @media screen {
-a.sourceLine::before { text-decoration: underline; }
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 code span.al { color: #ff0000; font-weight: bold; } /* Alert */
 code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
@@ -306,10 +308,10 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 <div id="the-get_azure_token-function" class="section level2">
 <h2>The <code>get_azure_token</code> function</h2>
 <p>The main function in AzureAuth is <code>get_azure_token</code>, which obtains an OAuth token from AAD:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" title="1"><span class="kw">library</span>(AzureAuth)</a>
-<a class="sourceLine" id="cb1-2" title="2"></a>
-<a class="sourceLine" id="cb1-3" title="3">token &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="dt">resource=</span><span class="st">&quot;myresource&quot;</span>, <span class="dt">tenant=</span><span class="st">&quot;mytenant&quot;</span>, <span class="dt">app=</span><span class="st">&quot;app_id&quot;</span>,</a>
-<a class="sourceLine" id="cb1-4" title="4">    <span class="dt">password=</span><span class="st">&quot;mypassword&quot;</span>, <span class="dt">username=</span><span class="st">&quot;username&quot;</span>, <span class="dt">certificate=</span><span class="st">&quot;encoded_cert&quot;</span>, <span class="dt">version=</span><span class="dv">1</span>, ...)</a></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">library</span>(AzureAuth)</span>
+<span id="cb1-2"><a href="#cb1-2"></a></span>
+<span id="cb1-3"><a href="#cb1-3"></a>token &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="dt">resource=</span><span class="st">&quot;myresource&quot;</span>, <span class="dt">tenant=</span><span class="st">&quot;mytenant&quot;</span>, <span class="dt">app=</span><span class="st">&quot;app_id&quot;</span>,</span>
+<span id="cb1-4"><a href="#cb1-4"></a>    <span class="dt">password=</span><span class="st">&quot;mypassword&quot;</span>, <span class="dt">username=</span><span class="st">&quot;username&quot;</span>, <span class="dt">certificate=</span><span class="st">&quot;encoded_cert&quot;</span>, <span class="dt">version=</span><span class="dv">1</span>, ...)</span></code></pre></div>
 <p>The function has the following arguments:</p>
 <ul>
 <li><code>resource</code>: The resource or scope for which you want a token. For AAD v1.0, this should be a single URL (eg “<a href="https://example.com">https://example.com</a>”) or a GUID. For AAD v2.0, this should be a vector of scopes (see below).</li>
@@ -320,12 +322,19 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 <li><code>version</code>: The version of AAD for which you want a token, either 1 or 2. The default is version 1. Note that the <em>OAuth scheme</em> is always 2.0.</li>
 </ul>
 <p>Scopes in AAD v2.0 consist of a URL or a GUID, along with a path that designates the scope. If a scope doesn’t have a path, <code>get_azure_token</code> will append the <code>/.default</code> path with a warning. A special scope is <code>offline_access</code>, which requests a refresh token from AAD along with the access token: without this, you will have to reauthenticate if you want to refresh the token.</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb2-1" title="1"><span class="co"># request an AAD v1.0 token for Resource Manager</span></a>
-<a class="sourceLine" id="cb2-2" title="2">token1 &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="st">&quot;https://management.azure.com/&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>)</a>
-<a class="sourceLine" id="cb2-3" title="3"></a>
-<a class="sourceLine" id="cb2-4" title="4"><span class="co"># same request to AAD v2.0, along with a refresh token</span></a>
-<a class="sourceLine" id="cb2-5" title="5">token2 &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="kw">c</span>(<span class="st">&quot;https://management.azure.com/.default&quot;</span>, <span class="st">&quot;offline_access&quot;</span>),</a>
-<a class="sourceLine" id="cb2-6" title="6">    <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>, <span class="dt">version=</span><span class="dv">2</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="co"># request an AAD v1.0 token for Resource Manager</span></span>
+<span id="cb2-2"><a href="#cb2-2"></a>token1 &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="st">&quot;https://management.azure.com/&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>)</span>
+<span id="cb2-3"><a href="#cb2-3"></a></span>
+<span id="cb2-4"><a href="#cb2-4"></a><span class="co"># same request to AAD v2.0, along with a refresh token</span></span>
+<span id="cb2-5"><a href="#cb2-5"></a>token2 &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="kw">c</span>(<span class="st">&quot;https://management.azure.com/.default&quot;</span>, <span class="st">&quot;offline_access&quot;</span>),</span>
+<span id="cb2-6"><a href="#cb2-6"></a>    <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>, <span class="dt">version=</span><span class="dv">2</span>)</span>
+<span id="cb2-7"><a href="#cb2-7"></a></span>
+<span id="cb2-8"><a href="#cb2-8"></a><span class="co"># requesting multiple scopes in AAD v2.0 (Microsoft Graph)</span></span>
+<span id="cb2-9"><a href="#cb2-9"></a>scopes &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;https://graph.microsoft.com/User.Read&quot;</span>,</span>
+<span id="cb2-10"><a href="#cb2-10"></a>            <span class="st">&quot;https://graph.microsoft.com/Files.Read&quot;</span>,</span>
+<span id="cb2-11"><a href="#cb2-11"></a>            <span class="st">&quot;https://graph.microsoft.com/Mail.Read&quot;</span>,</span>
+<span id="cb2-12"><a href="#cb2-12"></a>            <span class="st">&quot;offline_access&quot;</span>)</span>
+<span id="cb2-13"><a href="#cb2-13"></a>token3 &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(scopes, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>, <span class="dt">version=</span><span class="dv">2</span>)</span></code></pre></div>
 </div>
 <div id="authentication-methods" class="section level2">
 <h2>Authentication methods</h2>
@@ -335,102 +344,118 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 </p>
 The httpuv package must be installed to use this method, as it requires a web server to listen on the (local) redirect URI. Since it opens a browser to load the AAD authorization page, your machine must also have an Internet browser installed that can be run from inside R. In particular, if you are using a Linux <a href="https://azure.microsoft.com/en-us/services/virtual-machines/data-science-virtual-machines/">Data Science Virtual Machine</a> in Azure, you may run into difficulties; use one of the other methods instead.</li>
 </ol>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb3-1" title="1"><span class="co"># obtain a token using authorization_code</span></a>
-<a class="sourceLine" id="cb3-2" title="2"><span class="co"># no user credentials needed</span></a>
-<a class="sourceLine" id="cb3-3" title="3"><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;authorization_code&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a><span class="co"># obtain a token using authorization_code</span></span>
+<span id="cb3-2"><a href="#cb3-2"></a><span class="co"># no user credentials needed</span></span>
+<span id="cb3-3"><a href="#cb3-3"></a><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;authorization_code&quot;</span>)</span></code></pre></div>
 <ol start="2" style="list-style-type: decimal">
 <li>The <strong>device_code</strong> method is similar in concept to authorization_code, but is meant for situations where you are unable to browse the Internet – for example if you don’t have a browser installed or your computer has input constraints. First, <code>get_azure_token</code> contacts the AAD devicecode endpoint, which responds with a login URL and an access code. You then visit the URL and enter the code, possibly using a different computer. Meanwhile, <code>get_azure_token</code> polls the AAD access endpoint for a token, which is provided once you have entered the code.</li>
 </ol>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" title="1"><span class="co"># obtain a token using device_code</span></a>
-<a class="sourceLine" id="cb4-2" title="2"><span class="co"># no user credentials needed</span></a>
-<a class="sourceLine" id="cb4-3" title="3"><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;device_code&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a><span class="co"># obtain a token using device_code</span></span>
+<span id="cb4-2"><a href="#cb4-2"></a><span class="co"># no user credentials needed</span></span>
+<span id="cb4-3"><a href="#cb4-3"></a><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;device_code&quot;</span>)</span></code></pre></div>
 <ol start="3" style="list-style-type: decimal">
 <li>The <strong>client_credentials</strong> method is much simpler than the above methods, requiring only one step. <code>get_azure_token</code> contacts the access endpoint, passing it the credentials. This can be either a client secret or a certificate, which you supply in the <code>password</code> or <code>certificate</code> argument respectively. Once the credentials are verified, the endpoint returns the token. This is the method typically used by service accounts.</li>
 </ol>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" title="1"><span class="co"># obtain a token using client_credentials</span></a>
-<a class="sourceLine" id="cb5-2" title="2"><span class="co"># supply credentials in password arg</span></a>
-<a class="sourceLine" id="cb5-3" title="3"><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>,</a>
-<a class="sourceLine" id="cb5-4" title="4">                <span class="dt">password=</span><span class="st">&quot;client_secret&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;client_credentials&quot;</span>)</a>
-<a class="sourceLine" id="cb5-5" title="5"></a>
-<a class="sourceLine" id="cb5-6" title="6"><span class="co"># can also supply a client certificate as a PEM/PFX file...</span></a>
-<a class="sourceLine" id="cb5-7" title="7"><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>,</a>
-<a class="sourceLine" id="cb5-8" title="8">                <span class="dt">certificate=</span><span class="st">&quot;mycert.pem&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;client_credentials&quot;</span>)</a>
-<a class="sourceLine" id="cb5-9" title="9"></a>
-<a class="sourceLine" id="cb5-10" title="10"><span class="co"># ... or as an object in Azure Key Vault</span></a>
-<a class="sourceLine" id="cb5-11" title="11">cert &lt;-<span class="st"> </span>AzureKeyVault<span class="op">::</span><span class="kw">key_vault</span>(<span class="st">&quot;myvault&quot;</span>)<span class="op">$</span>certificates<span class="op">$</span><span class="kw">get</span>(<span class="st">&quot;mycert&quot;</span>)</a>
-<a class="sourceLine" id="cb5-12" title="12"><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>,</a>
-<a class="sourceLine" id="cb5-13" title="13">                <span class="dt">certificate=</span>cert, <span class="dt">auth_type=</span><span class="st">&quot;client_credentials&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a><span class="co"># obtain a token using client_credentials</span></span>
+<span id="cb5-2"><a href="#cb5-2"></a><span class="co"># supply credentials in password arg</span></span>
+<span id="cb5-3"><a href="#cb5-3"></a><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>,</span>
+<span id="cb5-4"><a href="#cb5-4"></a>                <span class="dt">password=</span><span class="st">&quot;client_secret&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;client_credentials&quot;</span>)</span>
+<span id="cb5-5"><a href="#cb5-5"></a></span>
+<span id="cb5-6"><a href="#cb5-6"></a><span class="co"># can also supply a client certificate as a PEM/PFX file...</span></span>
+<span id="cb5-7"><a href="#cb5-7"></a><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>,</span>
+<span id="cb5-8"><a href="#cb5-8"></a>                <span class="dt">certificate=</span><span class="st">&quot;mycert.pem&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;client_credentials&quot;</span>)</span>
+<span id="cb5-9"><a href="#cb5-9"></a></span>
+<span id="cb5-10"><a href="#cb5-10"></a><span class="co"># ... or as an object in Azure Key Vault</span></span>
+<span id="cb5-11"><a href="#cb5-11"></a>cert &lt;-<span class="st"> </span>AzureKeyVault<span class="op">::</span><span class="kw">key_vault</span>(<span class="st">&quot;myvault&quot;</span>)<span class="op">$</span>certificates<span class="op">$</span><span class="kw">get</span>(<span class="st">&quot;mycert&quot;</span>)</span>
+<span id="cb5-12"><a href="#cb5-12"></a><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>,</span>
+<span id="cb5-13"><a href="#cb5-13"></a>                <span class="dt">certificate=</span>cert, <span class="dt">auth_type=</span><span class="st">&quot;client_credentials&quot;</span>)</span></code></pre></div>
 <ol start="4" style="list-style-type: decimal">
 <li>The <strong>resource_owner</strong> method also requires only one step. In this method, <code>get_azure_token</code> passes your (personal) username and password to the AAD access endpoint, which validates your credentials and returns the token.</li>
 </ol>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb6-1" title="1"><span class="co"># obtain a token using resource_owner</span></a>
-<a class="sourceLine" id="cb6-2" title="2"><span class="co"># supply credentials in username and password args</span></a>
-<a class="sourceLine" id="cb6-3" title="3"><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>,</a>
-<a class="sourceLine" id="cb6-4" title="4">                <span class="dt">username=</span><span class="st">&quot;myusername&quot;</span>, <span class="dt">password=</span><span class="st">&quot;mypassword&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;resource_owner&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a><span class="co"># obtain a token using resource_owner</span></span>
+<span id="cb6-2"><a href="#cb6-2"></a><span class="co"># supply credentials in username and password args</span></span>
+<span id="cb6-3"><a href="#cb6-3"></a><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>,</span>
+<span id="cb6-4"><a href="#cb6-4"></a>                <span class="dt">username=</span><span class="st">&quot;myusername&quot;</span>, <span class="dt">password=</span><span class="st">&quot;mypassword&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;resource_owner&quot;</span>)</span></code></pre></div>
 <ol start="5" style="list-style-type: decimal">
 <li>The <strong>on_behalf_of</strong> method is used to authenticate with an Azure resource by passing a token obtained beforehand. It is mostly used by intermediate apps to authenticate for users. In particular, you can use this method to obtain tokens for multiple resources, while only requiring the user to authenticate once.</li>
 </ol>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb7-1" title="1"><span class="co"># obtaining multiple tokens: authenticate (interactively) once...</span></a>
-<a class="sourceLine" id="cb7-2" title="2">tok0 &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="st">&quot;serviceapp_id&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;clientapp_id&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;authorization_code&quot;</span>)</a>
-<a class="sourceLine" id="cb7-3" title="3"><span class="co"># ...then get tokens for each resource with on_behalf_of</span></a>
-<a class="sourceLine" id="cb7-4" title="4">tok1 &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="st">&quot;resource1&quot;</span>, <span class="st">&quot;mytenant,&quot;</span> <span class="st">&quot;serviceapp_id&quot;</span>,</a>
-<a class="sourceLine" id="cb7-5" title="5">                        <span class="dt">password=</span><span class="st">&quot;serviceapp_secret&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;on_behalf_of&quot;</span>, <span class="dt">on_behalf_of=</span>tok0)</a>
-<a class="sourceLine" id="cb7-6" title="6">tok2 &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="st">&quot;resource2&quot;</span>, <span class="st">&quot;mytenant,&quot;</span> <span class="st">&quot;serviceapp_id&quot;</span>,</a>
-<a class="sourceLine" id="cb7-7" title="7">                        <span class="dt">password=</span><span class="st">&quot;serviceapp_secret&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;on_behalf_of&quot;</span>, <span class="dt">on_behalf_of=</span>tok0)</a></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a><span class="co"># obtaining multiple tokens: authenticate (interactively) once...</span></span>
+<span id="cb7-2"><a href="#cb7-2"></a>tok0 &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="st">&quot;serviceapp_id&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;clientapp_id&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;authorization_code&quot;</span>)</span>
+<span id="cb7-3"><a href="#cb7-3"></a><span class="co"># ...then get tokens for each resource with on_behalf_of</span></span>
+<span id="cb7-4"><a href="#cb7-4"></a>tok1 &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="st">&quot;resource1&quot;</span>, <span class="st">&quot;mytenant,&quot;</span> <span class="st">&quot;serviceapp_id&quot;</span>,</span>
+<span id="cb7-5"><a href="#cb7-5"></a>                        <span class="dt">password=</span><span class="st">&quot;serviceapp_secret&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;on_behalf_of&quot;</span>, <span class="dt">on_behalf_of=</span>tok0)</span>
+<span id="cb7-6"><a href="#cb7-6"></a>tok2 &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="st">&quot;resource2&quot;</span>, <span class="st">&quot;mytenant,&quot;</span> <span class="st">&quot;serviceapp_id&quot;</span>,</span>
+<span id="cb7-7"><a href="#cb7-7"></a>                        <span class="dt">password=</span><span class="st">&quot;serviceapp_secret&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;on_behalf_of&quot;</span>, <span class="dt">on_behalf_of=</span>tok0)</span></code></pre></div>
 <p>If you don’t specify the method, <code>get_azure_token</code> makes a best guess based on the presence or absence of the other authentication arguments, and whether httpuv is installed.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb8-1" title="1"><span class="co"># this will default to authorization_code if httpuv is installed, and device_code if not</span></a>
-<a class="sourceLine" id="cb8-2" title="2"><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>)</a>
-<a class="sourceLine" id="cb8-3" title="3"></a>
-<a class="sourceLine" id="cb8-4" title="4"><span class="co"># this will use on_behalf_of method</span></a>
-<a class="sourceLine" id="cb8-5" title="5"><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>,</a>
-<a class="sourceLine" id="cb8-6" title="6">                <span class="dt">password=</span><span class="st">&quot;client_secret&quot;</span>, <span class="dt">on_behalf_of=</span>token)</a></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a><span class="co"># this will default to authorization_code if httpuv is installed, and device_code if not</span></span>
+<span id="cb8-2"><a href="#cb8-2"></a><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>)</span>
+<span id="cb8-3"><a href="#cb8-3"></a></span>
+<span id="cb8-4"><a href="#cb8-4"></a><span class="co"># this will use client_credentials method</span></span>
+<span id="cb8-5"><a href="#cb8-5"></a><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>,</span>
+<span id="cb8-6"><a href="#cb8-6"></a>                <span class="dt">password=</span><span class="st">&quot;client_secret&quot;</span>)</span>
+<span id="cb8-7"><a href="#cb8-7"></a></span>
+<span id="cb8-8"><a href="#cb8-8"></a><span class="co"># this will use on_behalf_of method</span></span>
+<span id="cb8-9"><a href="#cb8-9"></a><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>,</span>
+<span id="cb8-10"><a href="#cb8-10"></a>                <span class="dt">password=</span><span class="st">&quot;client_secret&quot;</span>, <span class="dt">on_behalf_of=</span>token)</span></code></pre></div>
+<div id="managed-identities" class="section level3">
+<h3>Managed identities</h3>
+<p>AzureAuth provides <code>get_managed_token</code> to obtain tokens from within a managed identity. This is a VM, service or container in Azure that can authenticate as itself, which removes the need to save secret passwords or certificates.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a><span class="co"># run this from within an Azure VM or container for which an identity has been setup</span></span>
+<span id="cb9-2"><a href="#cb9-2"></a><span class="kw">get_managed_token</span>(<span class="st">&quot;myresource&quot;</span>)</span></code></pre></div>
 </div>
-<div id="openid-connect" class="section level2">
-<h2>OpenID Connect</h2>
-<p>You can also use <code>get_azure_token</code> to obtain ID tokens, in addition to access tokens.</p>
-<p>With AAD v1.0, using an interactive authentication flow (authorization_code or device_code) will return an ID token by default – you don’t have to do anything extra. The token will be in the <code>credentials$id_token</code> component of the returned object.</p>
-<p>AAD v2.0 does not return an ID token by default, but you can get one by specifying <code>openid</code> as a scope. Again, this applies only to interactive authentication.</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb9-1" title="1"><span class="co"># ID token with AAD v1.0</span></a>
-<a class="sourceLine" id="cb9-2" title="2"><span class="co"># if you only want an ID token, set the resource to blank (&quot;&quot;)</span></a>
-<a class="sourceLine" id="cb9-3" title="3">tok &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="st">&quot;&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>)</a>
-<a class="sourceLine" id="cb9-4" title="4">tok<span class="op">$</span>credentials<span class="op">$</span>id_token</a>
-<a class="sourceLine" id="cb9-5" title="5"></a>
-<a class="sourceLine" id="cb9-6" title="6"><span class="co"># ID token with AAD v2.0</span></a>
-<a class="sourceLine" id="cb9-7" title="7">tok2 &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="kw">c</span>(<span class="st">&quot;openid&quot;</span>, <span class="st">&quot;offline_access&quot;</span>), <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>, <span class="dt">version=</span><span class="dv">2</span>)</a>
-<a class="sourceLine" id="cb9-8" title="8">tok2<span class="op">$</span>credentials<span class="op">$</span>id_token</a></code></pre></div>
+<div id="inside-a-web-app" class="section level3">
+<h3>Inside a web app</h3>
+<p>Using the interactive flows (authorization_code and device_code) from within a Shiny app requires separating the authorization (logging in to Azure) step from the token acquisition step. For this purpose, AzureAuth provides the <code>build_authorization_uri</code> and <code>get_device_creds</code> functions. You can use these from within your app to carry out the authorization, and then pass the resulting credentials to <code>get_azure_token</code> itself. See the “Authenticating from Shiny” vignette for an example app.</p>
+</div>
 </div>
 <div id="caching" class="section level2">
 <h2>Caching</h2>
 <p>AzureAuth caches tokens based on all the inputs to <code>get_azure_token</code>, as listed above. It defines its own directory for cached tokens, using the rappdirs package. On recent Windows versions, this will usually be in the location <code>C:\Users\(username)\AppData\Local\AzureR</code>. On Linux, it will be in <code>~/.local/share/AzureR</code>, and on MacOS, it will be in <code>~/Library/Application Support/AzureR</code>. Note that a single directory is used for all tokens, and the working directory is not touched (which significantly lessens the risk of accidentally introducing cached tokens into source control).</p>
 <p>For reasons of CRAN policy, the first time that AzureAuth is loaded, it will prompt you for permission to create this directory. Unless you have a specific reason otherwise, it’s recommended that you allow the directory to be created. Note that most other cloud engineering tools save credentials in this way, including Docker, Kubernetes, and the Azure CLI itself. The prompt only appears in an interactive session; if AzureAuth is loaded in a batch script, the directory is not created if it doesn’t already exist.</p>
 <p>To list all cached tokens on disk, use <code>list_azure_tokens</code>. This returns a list of token objects, named according to their MD5 hashes.</p>
-<p>To delete a cached token, use <code>delete_azure_token</code>. This takes the same inputs as <code>get_azure_token</code>, or you can specify the MD5 hash directly in the <code>hash</code> argument. To delete <em>all</em> cached tokens, use <code>clean_token_directory</code>.</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb10-1" title="1"><span class="co"># list all tokens</span></a>
-<a class="sourceLine" id="cb10-2" title="2"><span class="kw">list_azure_tokens</span>()</a>
-<a class="sourceLine" id="cb10-3" title="3"></a>
-<a class="sourceLine" id="cb10-4" title="4"><span class="co"># &lt;... list of token objects ...&gt;</span></a>
-<a class="sourceLine" id="cb10-5" title="5"></a>
-<a class="sourceLine" id="cb10-6" title="6"><span class="co"># delete a token</span></a>
-<a class="sourceLine" id="cb10-7" title="7"><span class="kw">delete_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>,</a>
-<a class="sourceLine" id="cb10-8" title="8">                   <span class="dt">password=</span><span class="st">&quot;client_credentials&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;client_credentials&quot;</span>)</a></code></pre></div>
+<p>To load a token from the cache using its MD5 hash, use <code>load_azure_token</code>. To delete a cached token, use <code>delete_azure_token</code>. This takes the same inputs as <code>get_azure_token</code>, or you can supply an MD5 hash via the <code>hash</code> argument. To delete <em>all</em> cached tokens, use <code>clean_token_directory</code>.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1"></a><span class="co"># list all tokens</span></span>
+<span id="cb10-2"><a href="#cb10-2"></a><span class="kw">list_azure_tokens</span>()</span>
+<span id="cb10-3"><a href="#cb10-3"></a></span>
+<span id="cb10-4"><a href="#cb10-4"></a><span class="co"># &lt;... list of token objects ...&gt;</span></span>
+<span id="cb10-5"><a href="#cb10-5"></a></span>
+<span id="cb10-6"><a href="#cb10-6"></a><span class="co"># delete a token</span></span>
+<span id="cb10-7"><a href="#cb10-7"></a><span class="kw">delete_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>,</span>
+<span id="cb10-8"><a href="#cb10-8"></a>                   <span class="dt">password=</span><span class="st">&quot;client_credentials&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;client_credentials&quot;</span>)</span></code></pre></div>
+<p>If you want to bypass the cache, specify <code>use_cache=FALSE</code> in the call to <code>get_azure_token</code>. This will always obtain a new token from AAD, and also prevent it being saved to the cache.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1"></a><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>, <span class="dt">use_cache=</span><span class="ot">FALSE</span>)</span></code></pre></div>
+</div>
+<div id="openid-connect" class="section level2">
+<h2>OpenID Connect</h2>
+<p>You can also use <code>get_azure_token</code> to obtain ID tokens, in addition to access tokens.</p>
+<p>With AAD v1.0, using an interactive authentication flow (authorization_code or device_code) will return an ID token by default – you don’t have to do anything extra. However, AAD v1.0 will <em>not</em> refresh the ID token when it expires (only the access token). Because of this, specify <code>use_cache=FALSE</code> to avoid picking up cached token credentials which may have been refreshed previously.</p>
+<p>AAD v2.0 does not return an ID token by default, but you can get one by specifying <code>openid</code> as a scope. Again, this applies only to interactive authentication. If you only want an ID token, it’s recommended to use AAD v2.0.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1"></a><span class="co"># ID token with AAD v1.0</span></span>
+<span id="cb12-2"><a href="#cb12-2"></a><span class="co"># if you only want an ID token, set the resource to blank (&quot;&quot;)</span></span>
+<span id="cb12-3"><a href="#cb12-3"></a>tok &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="st">&quot;&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>)</span>
+<span id="cb12-4"><a href="#cb12-4"></a><span class="kw">extract_token</span>(tok, <span class="st">&quot;id&quot;</span>)</span>
+<span id="cb12-5"><a href="#cb12-5"></a></span>
+<span id="cb12-6"><a href="#cb12-6"></a><span class="co"># ID token with AAD v2.0</span></span>
+<span id="cb12-7"><a href="#cb12-7"></a>tok2 &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="kw">c</span>(<span class="st">&quot;openid&quot;</span>, <span class="st">&quot;offline_access&quot;</span>), <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>, <span class="dt">version=</span><span class="dv">2</span>)</span>
+<span id="cb12-8"><a href="#cb12-8"></a><span class="kw">extract_token</span>(tok2, <span class="st">&quot;id&quot;</span>)</span></code></pre></div>
 </div>
 <div id="refreshing" class="section level2">
 <h2>Refreshing</h2>
 <p>A token object can be refreshed by calling its <code>refresh()</code> method. If the token’s credentials contain a refresh token, this is used; otherwise a new access token is obtained by reauthenticating. In most situations you don’t need to worry about this, as the AzureR packages will check if the credentials have expired and automatically refresh them for you.</p>
 <p>One scenario where you might want to refresh manually is using a token for one resource to obtain a token for another resource. Note that in AAD, a refresh token can be used to obtain an access token for any resource or scope that you have permissions for. Thus, for example, you could use a refresh token issued on a request for <code>https://management.azure.com</code> to obtain a new access token for <code>https://graph.microsoft.com</code> (assuming you’ve been granted permission).</p>
 <p>To obtain an access token for a new resource, change the object’s <code>resource</code> (for an AAD v1.0 token) or <code>scope</code> field (for an AAD v2.0 token) before calling <code>refresh()</code>. If you <em>also</em> want to retain the token for the old resource, you should call the <code>clone()</code> method first to create a copy.</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb11-1" title="1"><span class="co"># use a refresh token from one resource to get an access token for another resource</span></a>
-<a class="sourceLine" id="cb11-2" title="2">tok &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="st">&quot;https://myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>)</a>
-<a class="sourceLine" id="cb11-3" title="3">tok2 &lt;-<span class="st"> </span>tok<span class="op">$</span><span class="kw">clone</span>()</a>
-<a class="sourceLine" id="cb11-4" title="4">tok2<span class="op">$</span>resource &lt;-<span class="st"> &quot;https://anotherresource&quot;</span></a>
-<a class="sourceLine" id="cb11-5" title="5">tok2<span class="op">$</span><span class="kw">refresh</span>()</a>
-<a class="sourceLine" id="cb11-6" title="6"></a>
-<a class="sourceLine" id="cb11-7" title="7"><span class="co"># same for AAD v2.0</span></a>
-<a class="sourceLine" id="cb11-8" title="8">tok &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="kw">c</span>(<span class="st">&quot;https://myresource/.default&quot;</span>, <span class="st">&quot;offline_access&quot;</span>),</a>
-<a class="sourceLine" id="cb11-9" title="9">    <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>, <span class="dt">version=</span><span class="dv">2</span>)</a>
-<a class="sourceLine" id="cb11-10" title="10">tok2 &lt;-<span class="st"> </span>tok<span class="op">$</span><span class="kw">clone</span>()</a>
-<a class="sourceLine" id="cb11-11" title="11">tok2<span class="op">$</span>scope &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;https://anotherresource/.default&quot;</span>, <span class="st">&quot;offline_access&quot;</span>)</a>
-<a class="sourceLine" id="cb11-12" title="12">tok2<span class="op">$</span><span class="kw">refresh</span>()</a></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1"></a><span class="co"># use a refresh token from one resource to get an access token for another resource</span></span>
+<span id="cb13-2"><a href="#cb13-2"></a>tok &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="st">&quot;https://myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>)</span>
+<span id="cb13-3"><a href="#cb13-3"></a>tok2 &lt;-<span class="st"> </span>tok<span class="op">$</span><span class="kw">clone</span>()</span>
+<span id="cb13-4"><a href="#cb13-4"></a>tok2<span class="op">$</span>resource &lt;-<span class="st"> &quot;https://anotherresource&quot;</span></span>
+<span id="cb13-5"><a href="#cb13-5"></a>tok2<span class="op">$</span><span class="kw">refresh</span>()</span>
+<span id="cb13-6"><a href="#cb13-6"></a></span>
+<span id="cb13-7"><a href="#cb13-7"></a><span class="co"># same for AAD v2.0</span></span>
+<span id="cb13-8"><a href="#cb13-8"></a>tok &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="kw">c</span>(<span class="st">&quot;https://myresource/.default&quot;</span>, <span class="st">&quot;offline_access&quot;</span>),</span>
+<span id="cb13-9"><a href="#cb13-9"></a>    <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>, <span class="dt">version=</span><span class="dv">2</span>)</span>
+<span id="cb13-10"><a href="#cb13-10"></a>tok2 &lt;-<span class="st"> </span>tok<span class="op">$</span><span class="kw">clone</span>()</span>
+<span id="cb13-11"><a href="#cb13-11"></a>tok2<span class="op">$</span>scope &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;https://anotherresource/.default&quot;</span>, <span class="st">&quot;offline_access&quot;</span>)</span>
+<span id="cb13-12"><a href="#cb13-12"></a>tok2<span class="op">$</span><span class="kw">refresh</span>()</span></code></pre></div>
 </div>
 <div id="more-information" class="section level2">
 <h2>More information</h2>

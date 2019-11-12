@@ -87,6 +87,9 @@ public=list(
 
     validate=function()
     {
+        if(is.null(self$credentials$expires_on) || is.na(self$credentials$expires_on))
+            return(TRUE)
+
         expdate <- as.POSIXct(as.numeric(self$credentials$expires_on), origin="1970-01-01")
         curdate <- Sys.time()
         curdate < expdate
@@ -165,7 +168,19 @@ private=list(
     {
         # v2.0 endpoint doesn't provide an expires_on field, set it here
         if(is.null(self$credentials$expires_on))
-            self$credentials$expires_on <- as.character(decode_jwt(self$credentials$access_token)$payload$exp)
+        {
+            expiry <- try(as.character(decode_jwt(self$credentials$access_token)$payload$exp), silent=TRUE)
+            if(inherits(expiry, "try-error"))
+            {
+                expiry <- try(as.character(decode_jwt(self$credentials$id_token)$payload$exp), silent=TRUE)
+                if(inherits(expiry, "try-error"))
+                {
+                    warning("Expiry date not found", call.=FALSE)
+                    expiry <- NA
+                }
+            }
+            self$credentials$expires_on <- expiry
+        }
     },
 
     aad_uri=function(type, ...)

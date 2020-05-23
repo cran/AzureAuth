@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html>
 
 <head>
 
 <meta charset="utf-8" />
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 
 <meta name="author" content="Hong Ooi" />
 
@@ -97,7 +97,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
       if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
       var style = rule.style.cssText;
       // check if color or background-color is set
-      if (rule.style.color === '' || rule.style.backgroundColor === '') continue;
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
       // replace div.sourceCode by a pre.sourceCode rule
       sheets[i].deleteRule(j);
       sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
@@ -118,9 +118,6 @@ padding-right: 2em;
 font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 font-size: 14px;
 line-height: 1.35;
-}
-#header {
-text-align: center;
 }
 #TOC {
 clear: both;
@@ -289,8 +286,12 @@ code > span.st { color: #d14; }
 code > span.co { color: #888888; font-style: italic; } 
 code > span.ot { color: #007020; } 
 code > span.al { color: #ff0000; font-weight: bold; } 
-code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61717; background-color: #e3d2d2; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
 </style>
+
+
+
 
 </head>
 
@@ -300,7 +301,7 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 
 
 <h1 class="title toc-ignore">Authenticating from Shiny</h1>
-<h4 class="author"><em>Hong Ooi</em></h4>
+<h4 class="author">Hong Ooi</h4>
 
 
 
@@ -343,15 +344,21 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 <span id="cb1-34"><a href="#cb1-34"></a>    <span class="cf">if</span>(<span class="kw">is.null</span>(opts<span class="op">$</span>code))</span>
 <span id="cb1-35"><a href="#cb1-35"></a>        <span class="kw">return</span>()</span>
 <span id="cb1-36"><a href="#cb1-36"></a></span>
-<span id="cb1-37"><a href="#cb1-37"></a>    token &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(resource, tenant, app, <span class="dt">authorize_args=</span><span class="kw">list</span>(<span class="dt">redirect_uri=</span>redirect),</span>
-<span id="cb1-38"><a href="#cb1-38"></a>                             <span class="dt">use_cache=</span><span class="ot">FALSE</span>, <span class="dt">auth_code=</span>opts<span class="op">$</span>code)</span>
-<span id="cb1-39"><a href="#cb1-39"></a></span>
-<span id="cb1-40"><a href="#cb1-40"></a>    output<span class="op">$</span>token &lt;-<span class="st"> </span><span class="kw">renderPrint</span>(token)</span>
-<span id="cb1-41"><a href="#cb1-41"></a>}</span>
+<span id="cb1-37"><a href="#cb1-37"></a>    <span class="co"># this assumes your app has a &#39;public client/native&#39; redirect:</span></span>
+<span id="cb1-38"><a href="#cb1-38"></a>    <span class="co"># if it is a &#39;web&#39; redirect, include the client secret as the password argument</span></span>
+<span id="cb1-39"><a href="#cb1-39"></a>    token &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(resource, tenant, app, <span class="dt">auth_type=</span><span class="st">&quot;authorization_code&quot;</span>,</span>
+<span id="cb1-40"><a href="#cb1-40"></a>                             <span class="dt">authorize_args=</span><span class="kw">list</span>(<span class="dt">redirect_uri=</span>redirect),</span>
+<span id="cb1-41"><a href="#cb1-41"></a>                             <span class="dt">use_cache=</span><span class="ot">FALSE</span>, <span class="dt">auth_code=</span>opts<span class="op">$</span>code)</span>
 <span id="cb1-42"><a href="#cb1-42"></a></span>
-<span id="cb1-43"><a href="#cb1-43"></a><span class="kw">shinyApp</span>(ui_func, server)</span></code></pre></div>
+<span id="cb1-43"><a href="#cb1-43"></a>    output<span class="op">$</span>token &lt;-<span class="st"> </span><span class="kw">renderPrint</span>(token)</span>
+<span id="cb1-44"><a href="#cb1-44"></a>}</span>
+<span id="cb1-45"><a href="#cb1-45"></a></span>
+<span id="cb1-46"><a href="#cb1-46"></a><span class="kw">shinyApp</span>(ui_func, server)</span></code></pre></div>
 <p>Note that this process is only necessary within a web app, and only when using an interactive authentication flow. In a normal R session, or when using the client credentials or resource owner grant flows, you can simply call <code>get_azure_token</code> directly.</p>
 
+
+
+<!-- code folding -->
 
 
 <!-- dynamically load mathjax for compatibility with self-contained -->

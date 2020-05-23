@@ -1,3 +1,8 @@
+# AzureAuth 1.2.4
+
+- Allow any scheme to be used in the URI for a token resource, not just HTTP\[S\].
+- Documentation/vignette fixes.
+
 # AzureAuth 1.2.3
 
 * `is_guid`, `normalize_guid` and `normalize_tenant` now accept vector arguments. `normalize_guid` throws an error if any of its argument values is not a valid GUID.

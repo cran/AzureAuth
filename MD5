@@ -1,7 +1,7 @@
-3a77fc484a86e9e97ebc893188976da2 *DESCRIPTION
+43214cd7d7978e8b9450df0de2e346be *DESCRIPTION
 4dd4040e3beaa3462c568ce9d0620d9d *LICENSE
 d5d735a2418070ba085b5178e2fa27b1 *NAMESPACE
-4d5ea6e19091fcadf6d19b3685f4fd56 *NEWS.md
+75c22db467e1eb42309cde939f9201c0 *NEWS.md
 01dcc066948be8cac7d816b9061a1b2a *R/AzureAuth.R
 97cba089d7e46f2e721ee16841c0fb44 *R/AzureToken.R
 8086c736cd5df7c38db853d01dd88c77 *R/cert_creds.R
@@ -14,8 +14,8 @@ f4e8a3c37f4aef1b7ecda2cf1b93bb8d *R/managed_token.R
 8f8e82e0dd22d428cc2e3281799a2a07 *R/normalize.R
 4f4aaa6ba7a586e609d7bfa07b312ace *R/token.R
 2381ca4027ba6dc708eac3b895acd001 *R/utils.R
-7462fa7909dbbfb5d6894834018ff0a1 *README.md
-02f038eba0bb5abe7ad4881d8d720475 *build/vignette.rds
+7ef115c4a2f4346df08ba08eb85799c6 *README.md
+2278fe1a2f360cb6361c3b5ac5edbb60 *build/vignette.rds
 f3354cf9162b0ce6c6fb130e6df7bbf7 *inst/doc/shiny.Rmd
 fd327463a12cdc76706724479e73fa8f *inst/doc/shiny.html
 97ba839a918dfb52e5af386ad8c01c6f *inst/doc/token.Rmd

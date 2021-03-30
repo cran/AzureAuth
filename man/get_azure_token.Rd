@@ -179,20 +179,20 @@ There are 3 generic values that can be used as tenants when authenticating:\tabu
 
 \section{Caching}{
 
-AzureAuth caches tokens based on all the inputs to \code{get_azure_token} as listed above. Tokens are cached in a custom, user-specific directory, created with the rappdirs package. On recent Windows versions, this will usually be in the location \verb{C:\\\\Users\\\\(username)\\\\AppData\\\\Local\\\\AzureR}. On Linux, it will be in \verb{~/.config/AzureR}, and on MacOS, it will be in \verb{~/Library/Application Support/AzureR}. Note that a single directory is used for all tokens, and the working directory is not touched (which significantly lessens the risk of accidentally introducing cached tokens into source control).
+AzureAuth caches tokens based on all the inputs to \code{get_azure_token} as listed above. Tokens are cached in a custom, user-specific directory, created with the rappdirs package. On recent Windows versions, this will usually be in the location \verb{C:\\\\Users\\\\(username)\\\\AppData\\\\Local\\\\AzureR}. On Linux, it will be in \verb{~/.config/AzureR}, and on MacOS, it will be in \verb{~/Library/Application Support/AzureR}. Alternatively, you can specify the location of the directory in the environment variable \code{R_AZURE_DATA_DIR}. Note that a single directory is used for all tokens, and the working directory is not touched (which significantly lessens the risk of accidentally introducing cached tokens into source control).
 
 To list all cached tokens on disk, use \code{list_azure_tokens}. This returns a list of token objects, named according to their MD5 hashes.
 
 To delete a cached token, use \code{delete_azure_token}. This takes the same inputs as \code{get_azure_token}, or you can specify the MD5 hash directly in the \code{hash} argument.
 
-To delete \emph{all} cached tokens, use \code{clean_token_directory}.
+To delete all files in the caching directory, use \code{clean_token_directory}.
 }
 
 \section{Refreshing}{
 
 A token object can be refreshed by calling its \code{refresh()} method. If the token's credentials contain a refresh token, this is used; otherwise a new access token is obtained by reauthenticating.
 
-Note that in AAD, a refresh token can be used to obtain an access token for any resource or scope that you have permissions for. Thus, for example, you could use a refresh token issued on a request for \verb{https://management.azure.com} to obtain a new access token for \verb{https://graph.microsoft.com} (assuming you've been granted permission).
+Note that in AAD, a refresh token can be used to obtain an access token for any resource or scope that you have permissions for. Thus, for example, you could use a refresh token issued on a request for Azure Resource Manager (\verb{https://management.azure.com/}) to obtain a new access token for Microsoft Graph (\verb{https://graph.microsoft.com/}).
 
 To obtain an access token for a new resource, change the object's \code{resource} (for an AAD v1.0 token) or \code{scope} field (for an AAD v2.0 token) before calling \code{refresh()}. If you \emph{also} want to retain the token for the old resource, you should call the \code{clone()} method first to create a copy. See the examples below.
 }
@@ -202,6 +202,8 @@ To obtain an access token for a new resource, change the object's \code{resource
 For \code{get_azure_token}, an object inheriting from \code{AzureToken}. The specific class depends on the authentication flow: \code{AzureTokenAuthCode}, \code{AzureTokenDeviceCode}, \code{AzureTokenClientCreds}, \code{AzureTokenOnBehalfOf}, \code{AzureTokenResOwner}. For \code{get_managed_token}, a similar object of class \code{AzureTokenManaged}.
 
 For \code{list_azure_tokens}, a list of such objects retrieved from disk.
+
+The actual credentials that are returned from the authorization endpoint can be found in the \code{credentials} field, the same as with a \code{httr::Token} object. The access token (if present) will be \code{credentials$access_token}, and the ID token (if present) will be \code{credentials$id_token}. Use these if you are manually constructing a HTTP request and need to insert an "Authorization" header, for example.
 }
 
 \examples{
@@ -316,6 +318,12 @@ tok <- get_azure_token(c("https://myresource/.default", "offline_access"),
 tok2 <- tok$clone()
 tok2$scope <- c("https://anotherresource/.default", "offline_access")
 tok2$refresh()
+
+
+# manually adding auth header for a HTTP request
+tok <- get_azure_token("https://myresource", "mytenant", "app_id")
+header <- httr::add_headers(Authorization=paste("Bearer", tok$credentials$access_token))
+httr::GET("https://myresource/path/for/call", header, ...)
 
 }
 }

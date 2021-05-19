@@ -1,3 +1,10 @@
+# AzureAuth 1.3.2
+
+- Change the default caching behaviour to disable the cache if running inside Shiny.
+- Update Shiny vignette to clean up redirect page after authenticating (thanks to Tyler Littlefield).
+- Revert the changed behaviour for caching directory creation in 1.3.1.
+- Add a `create_AzureR_dir` function to create the caching directory manually. This can be useful not just for non-interactive sessions, but also Jupyter and R notebooks, which are not _technically_ interactive in the sense that they cannot read user input from a console prompt.
+
 # AzureAuth 1.3.1
 
 - Allow specifying the location of the token caching directory in the environment variable `R_AZURE_DATA_DIR`.

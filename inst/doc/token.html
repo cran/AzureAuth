@@ -409,36 +409,37 @@ The httpuv package must be installed to use this method, as it requires a web se
 <p>Using the interactive flows (authorization_code and device_code) from within a Shiny app requires separating the authorization (logging in to Azure) step from the token acquisition step. For this purpose, AzureAuth provides the <code>build_authorization_uri</code> and <code>get_device_creds</code> functions. You can use these from within your app to carry out the authorization, and then pass the resulting credentials to <code>get_azure_token</code> itself. See the “Authenticating from Shiny” vignette for an example app.</p>
 </div>
 </div>
+<div id="authentication-vs-authorization" class="section level2">
+<h2>Authentication vs authorization:</h2>
+<p>Azure Active Directory can be used for two purposes: <em>authentication</em> (verifying that a user is who they claim they are) and <em>authorization</em> (granting a user permission to access a resource). In AAD, a successful authorization process concludes with the granting of an OAuth 2.0 access token, as discussed above. Authentication uses the same process but concludes by granting an ID token, as defined in the OpenID Connect protocol.</p>
+<p>You can use <code>get_azure_token</code> to obtain ID tokens, in addition to access tokens.</p>
+<p>With AAD v1.0, using an interactive authentication flow (authorization_code or device_code) will return an ID token by default – you don’t have to do anything extra. However, AAD v1.0 will <em>not</em> refresh the ID token when it expires (only the access token). Because of this, specify <code>use_cache=FALSE</code> to avoid picking up cached token credentials which may have been refreshed previously.</p>
+<p>AAD v2.0 does not return an ID token by default, but you can get one by specifying <code>openid</code> as a scope. Again, this applies only to interactive authentication. If you only want an ID token, it’s recommended to use AAD v2.0.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1"></a><span class="co"># ID token with AAD v1.0</span></span>
+<span id="cb10-2"><a href="#cb10-2"></a><span class="co"># if you only want an ID token, set the resource to blank (&quot;&quot;)</span></span>
+<span id="cb10-3"><a href="#cb10-3"></a>tok &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="st">&quot;&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>)</span>
+<span id="cb10-4"><a href="#cb10-4"></a><span class="kw">extract_token</span>(tok, <span class="st">&quot;id&quot;</span>)</span>
+<span id="cb10-5"><a href="#cb10-5"></a></span>
+<span id="cb10-6"><a href="#cb10-6"></a><span class="co"># ID token with AAD v2.0</span></span>
+<span id="cb10-7"><a href="#cb10-7"></a>tok2 &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="kw">c</span>(<span class="st">&quot;openid&quot;</span>, <span class="st">&quot;offline_access&quot;</span>), <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>, <span class="dt">version=</span><span class="dv">2</span>)</span>
+<span id="cb10-8"><a href="#cb10-8"></a><span class="kw">extract_token</span>(tok2, <span class="st">&quot;id&quot;</span>)</span></code></pre></div>
+</div>
 <div id="caching" class="section level2">
 <h2>Caching</h2>
 <p>AzureAuth caches tokens based on all the inputs to <code>get_azure_token</code>, as listed above. It defines its own directory for cached tokens, using the rappdirs package. On recent Windows versions, this will usually be in the location <code>C:\Users\(username)\AppData\Local\AzureR</code>. On Linux, it will be in <code>~/.local/share/AzureR</code>, and on MacOS, it will be in <code>~/Library/Application Support/AzureR</code>. Note that a single directory is used for all tokens, and the working directory is not touched (which significantly lessens the risk of accidentally introducing cached tokens into source control).</p>
 <p>For reasons of CRAN policy, the first time that AzureAuth is loaded, it will prompt you for permission to create this directory. Unless you have a specific reason otherwise, it’s recommended that you allow the directory to be created. Note that most other cloud engineering tools save credentials in this way, including Docker, Kubernetes, and the Azure CLI itself. The prompt only appears in an interactive session; if AzureAuth is loaded in a batch script, the directory is not created if it doesn’t already exist.</p>
 <p>To list all cached tokens on disk, use <code>list_azure_tokens</code>. This returns a list of token objects, named according to their MD5 hashes.</p>
 <p>To load a token from the cache using its MD5 hash, use <code>load_azure_token</code>. To delete a cached token, use <code>delete_azure_token</code>. This takes the same inputs as <code>get_azure_token</code>, or you can supply an MD5 hash via the <code>hash</code> argument. To delete <em>all</em> cached tokens, use <code>clean_token_directory</code>.</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1"></a><span class="co"># list all tokens</span></span>
-<span id="cb10-2"><a href="#cb10-2"></a><span class="kw">list_azure_tokens</span>()</span>
-<span id="cb10-3"><a href="#cb10-3"></a></span>
-<span id="cb10-4"><a href="#cb10-4"></a><span class="co"># &lt;... list of token objects ...&gt;</span></span>
-<span id="cb10-5"><a href="#cb10-5"></a></span>
-<span id="cb10-6"><a href="#cb10-6"></a><span class="co"># delete a token</span></span>
-<span id="cb10-7"><a href="#cb10-7"></a><span class="kw">delete_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>,</span>
-<span id="cb10-8"><a href="#cb10-8"></a>                   <span class="dt">password=</span><span class="st">&quot;client_credentials&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;client_credentials&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1"></a><span class="co"># list all tokens</span></span>
+<span id="cb11-2"><a href="#cb11-2"></a><span class="kw">list_azure_tokens</span>()</span>
+<span id="cb11-3"><a href="#cb11-3"></a></span>
+<span id="cb11-4"><a href="#cb11-4"></a><span class="co"># &lt;... list of token objects ...&gt;</span></span>
+<span id="cb11-5"><a href="#cb11-5"></a></span>
+<span id="cb11-6"><a href="#cb11-6"></a><span class="co"># delete a token</span></span>
+<span id="cb11-7"><a href="#cb11-7"></a><span class="kw">delete_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>,</span>
+<span id="cb11-8"><a href="#cb11-8"></a>                   <span class="dt">password=</span><span class="st">&quot;client_credentials&quot;</span>, <span class="dt">auth_type=</span><span class="st">&quot;client_credentials&quot;</span>)</span></code></pre></div>
 <p>If you want to bypass the cache, specify <code>use_cache=FALSE</code> in the call to <code>get_azure_token</code>. This will always obtain a new token from AAD, and also prevent it being saved to the cache.</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1"></a><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>, <span class="dt">use_cache=</span><span class="ot">FALSE</span>)</span></code></pre></div>
-</div>
-<div id="openid-connect" class="section level2">
-<h2>OpenID Connect</h2>
-<p>You can also use <code>get_azure_token</code> to obtain ID tokens, in addition to access tokens.</p>
-<p>With AAD v1.0, using an interactive authentication flow (authorization_code or device_code) will return an ID token by default – you don’t have to do anything extra. However, AAD v1.0 will <em>not</em> refresh the ID token when it expires (only the access token). Because of this, specify <code>use_cache=FALSE</code> to avoid picking up cached token credentials which may have been refreshed previously.</p>
-<p>AAD v2.0 does not return an ID token by default, but you can get one by specifying <code>openid</code> as a scope. Again, this applies only to interactive authentication. If you only want an ID token, it’s recommended to use AAD v2.0.</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1"></a><span class="co"># ID token with AAD v1.0</span></span>
-<span id="cb12-2"><a href="#cb12-2"></a><span class="co"># if you only want an ID token, set the resource to blank (&quot;&quot;)</span></span>
-<span id="cb12-3"><a href="#cb12-3"></a>tok &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="st">&quot;&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>)</span>
-<span id="cb12-4"><a href="#cb12-4"></a><span class="kw">extract_token</span>(tok, <span class="st">&quot;id&quot;</span>)</span>
-<span id="cb12-5"><a href="#cb12-5"></a></span>
-<span id="cb12-6"><a href="#cb12-6"></a><span class="co"># ID token with AAD v2.0</span></span>
-<span id="cb12-7"><a href="#cb12-7"></a>tok2 &lt;-<span class="st"> </span><span class="kw">get_azure_token</span>(<span class="kw">c</span>(<span class="st">&quot;openid&quot;</span>, <span class="st">&quot;offline_access&quot;</span>), <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>, <span class="dt">version=</span><span class="dv">2</span>)</span>
-<span id="cb12-8"><a href="#cb12-8"></a><span class="kw">extract_token</span>(tok2, <span class="st">&quot;id&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1"></a><span class="kw">get_azure_token</span>(<span class="st">&quot;myresource&quot;</span>, <span class="st">&quot;mytenant&quot;</span>, <span class="st">&quot;app_id&quot;</span>, <span class="dt">use_cache=</span><span class="ot">FALSE</span>)</span></code></pre></div>
 </div>
 <div id="refreshing" class="section level2">
 <h2>Refreshing</h2>
